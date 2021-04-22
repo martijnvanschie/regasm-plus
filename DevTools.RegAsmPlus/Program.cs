@@ -3,19 +3,22 @@ using System.IO;
 using System.Reflection;
 using System.Runtime.InteropServices;
 
-namespace ConsoleApp1
+namespace DevTools.RegAsmPlus
 {
     class Program
     {
         private static string assemblyCodeBase;
         static void Main(string[] args)
         {
-            Console.WriteLine("Start process");
+            Console.WriteLine("RegAsm Plus");
+            ValidateArguments(args);
 
             AppDomain.CurrentDomain.AssemblyResolve += new ResolveEventHandler(MyResolver);
 
+            Console.WriteLine($"Registering assembly [{args[0]}].");
             Assembly asm = Assembly.LoadFile(args[0].ToString());
 
+            Console.WriteLine($"Assembly codebase [{asm.Location}]");
             assemblyCodeBase = Path.GetDirectoryName(asm.Location);
 
             RegistrationServices regAsm = new RegistrationServices();
@@ -23,6 +26,9 @@ namespace ConsoleApp1
             try
             {
                 bool bResult = regAsm.RegisterAssembly(asm, AssemblyRegistrationFlags.SetCodeBase);
+
+                var message = bResult ? $"Assembly registered successfully." : $"Assembly not registered. No eligable types found in assembly.";
+                Console.WriteLine(message);
             }
             catch (Exception ex)
             {
@@ -53,6 +59,33 @@ namespace ConsoleApp1
             fs.Close();
 
             return buffer;
+        }
+
+        static void ValidateArguments(string[] args)
+        {
+            try
+            {
+                if (args.Length != 1)
+                {
+                    ExitWithCode(ExitCode.ARGUMENTS_INVALID_AMOUNT);
+                }
+
+                if (!File.Exists(args[0].ToString()))
+                {
+                    ExitWithCode(ExitCode.ARGUMENT_ASSEMBLY_NOT_FOUND);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+                ExitWithCode(ExitCode.ARGUMENT_BAD_INPUT);
+            }
+        }
+
+        static void ExitWithCode(int code)
+        {
+            Console.WriteLine(ExitCodeManager.GetDescription(code).Message);
+            Environment.Exit(ExitCodeManager.GetDescription(code).ExitCode);
         }
     }
 }
